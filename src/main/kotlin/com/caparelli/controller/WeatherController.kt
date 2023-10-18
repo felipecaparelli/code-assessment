@@ -2,10 +2,16 @@ package com.caparelli.controller
 
 import com.caparelli.model.DailyForecast
 import com.caparelli.service.WeatherService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 
 @RestController
 @RequestMapping("/weather")
@@ -14,10 +20,14 @@ class WeatherController(private val weatherService: WeatherService) {
     /**
      * API to retrieve the highest temperature for today in Celcius
      */
-    @GetMapping("/daily-forecast")
-    fun getTodayHighestTemperatureInCelsius(): Mono<DailyForecast> {
+    @GetMapping("/daily-forecast/{WCO}/{gridX},{gridY}")
+    fun getTodayHighestTemperatureInCelsius(@PathVariable(name = "WCO") wco: String,
+                                            @PathVariable(name = "gridX") gridX: String,
+                                            @PathVariable(name = "gridY") gridY: String): Mono<DailyForecast> {
         return weatherService.convertWeatherForecastToDailyForecast(
-            weatherService.getWeatherForecast()
+            runBlocking {
+                weatherService.getWeatherForecast(wco, gridX, gridY)
+            }
         )
     }
 }

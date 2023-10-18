@@ -3,21 +3,31 @@ package com.caparelli.service
 import com.caparelli.model.DailyForecast
 import com.caparelli.model.Period
 import com.caparelli.model.WeatherForecast
+import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 
 @Service
 class WeatherService {
-    private val webClient = WebClient.builder()
-        .baseUrl("https://api.weather.gov/gridpoints/MLB/33,70/forecast")
-        .build()
 
-    fun getWeatherForecast(): Mono<WeatherForecast> {
-        return webClient
-            .get()
-            .retrieve()
-            .bodyToMono(WeatherForecast::class.java)
+    fun buildWebClient(wco: String, gridX: String, gridY: String): WebClient {
+        return WebClient.builder()
+            .baseUrl("https://api.weather.gov/gridpoints/$wco/$gridX,$gridY/forecast")
+            .build()
+    }
+
+    suspend fun getWeatherForecast(wco: String, gridX: String, gridY: String): Mono<WeatherForecast> {
+        return runBlocking<Mono<WeatherForecast>> {
+            val resp = buildWebClient(wco, gridX, gridY)
+                .get()
+                .retrieve()
+                .bodyToMono(WeatherForecast::class.java)
+            resp
+        }.onErrorResume {throwable ->
+            println("Error occurred: ${throwable.message}")
+            Mono.just(WeatherForecast("mock",null, null))
+        }
     }
 
     fun convertWeatherForecastToDailyForecast(weatherForecast: Mono<WeatherForecast>): Mono<DailyForecast> {
@@ -27,15 +37,18 @@ class WeatherService {
     }
 
     fun convertWeatherForecast(weatherForecast: WeatherForecast): DailyForecast {
-        val highestTempInTheDay = findPeriodWithHighestTemperature(weatherForecast.properties!!.periods)
-        if (highestTempInTheDay != null) {
-            return DailyForecast(
-                highestTempInTheDay.name,
-                convertFahrenheitToCelsius(highestTempInTheDay.temperature),
-                highestTempInTheDay.shortForecast
-            )
+        val properties = weatherForecast.properties
+        if (properties != null) {
+            val highestTempInTheDay = findPeriodWithHighestTemperature(properties.periods)
+            if (highestTempInTheDay != null) {
+                return DailyForecast(
+                    highestTempInTheDay.name,
+                    convertFahrenheitToCelsius(highestTempInTheDay.temperature),
+                    highestTempInTheDay.shortForecast
+                )
+            }
         }
-        return DailyForecast("invalid", 0.0, "")
+        return DailyForecast(weatherForecast.type!!, 0.0, "")
     }
 
     fun findPeriodWithHighestTemperature(periods: List<Period>): Period? {
