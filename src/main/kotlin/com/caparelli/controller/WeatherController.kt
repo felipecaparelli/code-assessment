@@ -2,16 +2,12 @@ package com.caparelli.controller
 
 import com.caparelli.model.DailyForecast
 import com.caparelli.service.WeatherService
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
-import reactor.core.scheduler.Schedulers
 
 @RestController
 @RequestMapping("/weather")
