@@ -4,9 +4,11 @@ import com.caparelli.model.DailyForecast
 import com.caparelli.model.Period
 import com.caparelli.model.WeatherForecast
 import kotlinx.coroutines.runBlocking
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
+import java.time.Duration
 
 @Service
 class WeatherService {
@@ -17,12 +19,15 @@ class WeatherService {
             .build()
     }
 
+    @Cacheable(cacheNames= ["weatherCache"], key="#wco")
     suspend fun getWeatherForecast(wco: String, gridX: String, gridY: String): Mono<WeatherForecast> {
         return runBlocking<Mono<WeatherForecast>> {
             val resp = buildWebClient(wco, gridX, gridY)
                 .get()
                 .retrieve()
                 .bodyToMono(WeatherForecast::class.java)
+                .cache(Duration.ofSeconds(10))
+                .cacheInvalidateIf{ it.type == "mock"}
             resp
         }.onErrorResume {throwable ->
             println("Error occurred: ${throwable.message}")
